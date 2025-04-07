@@ -1,0 +1,6 @@
+upstash-redis
+python-decouple
+jupyter
+replicate
+# support .heic images -> see readme
+# pillow-heif 
