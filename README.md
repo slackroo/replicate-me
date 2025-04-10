@@ -1,5 +1,5 @@
 # SuperMe - Generative Photo AI
-[![Star this repo](https://img.shields.io/github/stars/codingforentrepreneurs/super-me-photo-ai-api?style=social)](https://github.com/codingforentrepreneurs/super-me-photo-ai-api)
+[![Star this repo](https://img.shields.io/github/stars/slackroo/replicate-me?style=social)](https://github.com/cslackroo/replicate-me)
 
 Learn how to build an API that trains and generate photos featuring... you! Using FastAPI, Upstash, Replicate, Jupyter, and more
 
