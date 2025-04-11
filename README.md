@@ -27,9 +27,9 @@ Open a command line (Terminal, VSCode Terminal, Cursor Terminal, Powershell, etc
 
 Clone this Repo
 ```bash
-mkdir -p ~/dev/superme-api
-cd ~/dev/superme-api
-git clone https://github.com/codingforentrepreneurs/super-me-photo-ai-api .
+mkdir -p ~/dev/replicate-me
+cd ~/dev/replicate-me
+git clone https://github.com/slackroo/replicate-me .
 ```
 
 Checkout the start branch
