@@ -70,3 +70,7 @@ brew install libheif
 (venv) python -m pip install pillow-heif
 ```
 If on _linux_ or _Docker_, you can use `sudo apt-get install libheif-dev`
+
+To collect api secrets
+```python3 -c "import secrets;print(secrets.token_urlsafe(32))"```
+
