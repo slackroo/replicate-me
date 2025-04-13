@@ -12,6 +12,7 @@ REPLICATE_MODEL_VERSION = config('REPLICATE_MODEL_VERSION')
 def get_replicate_client() -> replicate.Client:
     return Client(api_token=REPLICATE_API_TOKEN)
 
+
 @lru_cache
 def get_replicate_model_version() -> str:
     replicate_client = get_replicate_client()
@@ -19,7 +20,15 @@ def get_replicate_model_version() -> str:
     replicate_version = replicate_model.versions.get(REPLICATE_MODEL_VERSION)
     return replicate_version
 
-def generate_image(prompt: str):
+
+def generate_image(prompt: str,
+                   require_trigger_word: bool = True,
+                   trigger_word: str = "TOK",
+                   ):
+    if require_trigger_word:
+        if trigger_word not in prompt:
+            raise Exception(f"Trigger word: {trigger_word} not found in prompt")
+
     input_args = {
         "prompt": prompt,
         "num_outputs": 2,
