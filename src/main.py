@@ -1,3 +1,4 @@
+from typing import Optional
 from decouple import config
 from fastapi import (
     FastAPI,
@@ -17,8 +18,8 @@ REDIS_URL = config('REDIS_URL')
 API_KEY_HEADER = 'X-API-Key'
 API_ACCESS_KEY = config('API_ACCESS_KEY')
 
-
 app = FastAPI(lifespan=my_ratelimit_lifespan)
+
 
 @app.middleware("http")
 async def custom_api_key_middleware(request: Request, call_next):
@@ -54,3 +55,31 @@ def generate_image(data: ImageGenerationRequest):
         return pred_result
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.get("/processing", dependencies=[
+    Depends(RateLimiter(times=500, seconds=20)),
+])
+def list_processing_view():
+    results = helpers.list_prediction_results(status='processing')
+    return results
+
+
+@app.get("/predictions", dependencies=[
+    Depends(RateLimiter(times=1000, seconds=20)),
+])
+def list_predictions_view(status: Optional[str] = None, ):
+    results = helpers.list_prediction_results(status=status)
+    return results
+
+
+@app.get("/predictions/{prediction_id}", dependencies=[
+    Depends(RateLimiter(times=1000, seconds=20)),
+])
+def prediction_detail_view(prediction_id: str):
+    result, status = helpers.get_prediction_details(prediction_id=prediction_id)
+    if status == 404:
+        raise HTTPException(status_code=status, detail="Prediction not found")
+    elif status == 500:
+        raise HTTPException(status_code=status, detail="Internal server error")
+    return result
