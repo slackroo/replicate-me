@@ -7,12 +7,13 @@ from fastapi import (
     Request,
     Response
 )
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from fastapi_limiter.depends import RateLimiter
 from pydantic import BaseModel
-
+import mimetypes
 import helpers
 from helpers.ratelimiting import lifespan as my_ratelimit_lifespan
+from helpers import fetchers
 
 REDIS_URL = config('REDIS_URL')
 API_KEY_HEADER = 'X-API-Key'
@@ -73,9 +74,11 @@ def list_predictions_view(status: Optional[str] = None, ):
     return results
 
 
-@app.get("/predictions/{prediction_id}", dependencies=[
-    Depends(RateLimiter(times=1000, seconds=20)),
-])
+@app.get("/predictions/{prediction_id}",
+         dependencies=[
+             Depends(RateLimiter(times=1000, seconds=20)),
+         ],
+         )
 def prediction_detail_view(prediction_id: str):
     result, status = helpers.get_prediction_details(prediction_id=prediction_id)
     if status == 404:
@@ -83,3 +86,31 @@ def prediction_detail_view(prediction_id: str):
     elif status == 500:
         raise HTTPException(status_code=status, detail="Internal server error")
     return result
+
+
+@app.get("/predictions/{prediction_id}/files/{index_id}", dependencies=[
+    Depends(RateLimiter(times=1000, seconds=20)),
+])
+async def prediction_file_output_view(prediction_id: str, index_id: int):
+    result, status = helpers.get_prediction_details(prediction_id=prediction_id)
+    if status == 404:
+        raise HTTPException(status_code=status, detail="Prediction not found")
+    elif status == 500:
+        raise HTTPException(status_code=status, detail="Internal server error")
+    outputs = result.ouput
+    if outputs is None:
+        raise HTTPException(status_code=404, detail="Prediction output not found")
+    len_outputs = len(outputs)
+    if index_id > len_outputs:
+        raise HTTPException(status_code=404, detail="File at index output not found")
+    try:
+        file_url = result.ouput[index_id]
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"server error {e}")
+    media_type, _ = mimetypes.guess_type(file_url)
+    content = await fetchers.fetch_file_async(file_url)
+
+    return StreamingResponse(
+        iter([content]),
+        media_type=media_type or "image/jpeg"
+    )
