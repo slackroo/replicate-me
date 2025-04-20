@@ -1,10 +1,13 @@
 upstash-redis
-python-decouple
+python-decouple==3.8
 jupyter
-replicate
-pillow
-fastapi
+replicate==1.0.4
+pillow==11.1.0
+fastapi==0.115.12
 fastapi[standard]
 fastapi-limiter
 # support .heic images -> see readme
 # pillow-heif 
+pydantic==2.11.2
+httpx==0.28.1
+redis==5.2.1

@@ -37,52 +37,10 @@ def generate_image(prompt: str,
     }
     replicate_client = get_replicate_client()
     replicate_version = get_replicate_model_version()
-    pred = replicate_client.predictions.create(
+    return replicate_client.predictions.create(
         version=replicate_version,
         input=input_args,
     )
-
-    return {
-        "id": pred.id,
-        "status": pred.status
-    }
-
-
-def list_prediction_results(model=REPLICATE_MODEL,
-                            version=REPLICATE_MODEL_VERSION,
-                            status=None,
-                            max_size=500
-                            ) -> list:
-    replicate_client = get_replicate_client()
-    preds = replicate_client.predictions.list()
-    results = list(preds.results)
-    while preds.next:
-        _preds = replicate_client.predictions.list(preds.next)
-        results += list(_preds.results)
-        if len(results) > max_size:
-            break
-    results = [
-        {
-            "url": f"/predictions/{x.id}",
-            "status": x.status,
-            "created_at": x.created_at,
-            "completed_at": x.completed_at,
-        }
-        for x in results if x.model == model and x.version == version
-    ]  # Todo: we can improve this via pydantic
-
-    if status is not None:
-        results = [
-            {
-                "url": f"/predictions/{x.id}",
-                "status": x.status,
-                "created_at": x.created_at,
-                "completed_at": x.completed_at,
-            }
-            for x in results if x['status'] == status
-        ]
-
-    return results
 
 
 # def list_prediction_results(model=REPLICATE_MODEL,
@@ -98,15 +56,50 @@ def list_prediction_results(model=REPLICATE_MODEL,
 #         results += list(_preds.results)
 #         if len(results) > max_size:
 #             break
-#     results = [x for x in results if x.model == model and x.version == version]  # Todo: we can improve this via pydantic
+#     results = [
+#         {
+#             "url": f"/predictions/{x.id}",
+#             "status": x.status,
+#             "created_at": x.created_at,
+#             "completed_at": x.completed_at,
+#         }
+#         for x in results if x.model == model and x.version == version
+#     ]  # Todo: we can improve this via pydantic
 #
 #     if status is not None:
-#         results = [x for x in results if x['status'] == status]
+#
+#         results = [
+#             x
+#             for x in results if x['status'] == status
+#         ]
 #
 #     return results
 
-def get_prediction_details(prediction_id=None,
-                          ):
+
+def list_prediction_results(model=REPLICATE_MODEL,
+                            version=REPLICATE_MODEL_VERSION,
+                            status=None,
+                            max_size=500
+                            ):
+    replicate_client = get_replicate_client()
+    preds = replicate_client.predictions.list()
+    results = list(preds.results)
+    while preds.next:
+        _preds = replicate_client.predictions.list(preds.next)
+        results += list(_preds.results)
+        if len(results) > max_size:
+            break
+    results = [x for x in results if x.model == model and x.version == version]
+
+    if status is not None:
+        results = [x for x in results if x.status == status]
+
+    return results
+
+
+def get_prediction_details(
+        prediction_id=None,
+):
     replicate_client = get_replicate_client()
     try:
         pred = replicate_client.predictions.get(prediction_id)

@@ -13,7 +13,7 @@ from pydantic import BaseModel
 import mimetypes
 import helpers
 from helpers.ratelimiting import lifespan as my_ratelimit_lifespan
-from helpers import fetchers
+from helpers import fetchers, schemas
 
 REDIS_URL = config('REDIS_URL')
 API_KEY_HEADER = 'X-API-Key'
@@ -48,36 +48,44 @@ class ImageGenerationRequest(BaseModel):
           dependencies=[
               Depends(RateLimiter(times=2, seconds=5)),
               Depends(RateLimiter(times=4, minutes=1)),
-          ]
+          ],
+          response_model=schemas.PredictionCreateModel
           )
 def generate_image(data: ImageGenerationRequest):
     try:
         pred_result = helpers.generate_image(data.prompt)
-        return pred_result
+        return schemas.PredictionCreateModel.from_replicate(pred_result.dict())
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@app.get("/processing", dependencies=[
-    Depends(RateLimiter(times=500, seconds=20)),
-])
+@app.get("/processing",
+         dependencies=[
+             Depends(RateLimiter(times=500, seconds=20)),
+         ],
+         response_model=list[schemas.PredictionListModel]
+         )
 def list_processing_view():
     results = helpers.list_prediction_results(status='processing')
-    return results
+    return [schemas.PredictionListModel.from_replicate(x.dict()) for x in results]
 
 
-@app.get("/predictions", dependencies=[
-    Depends(RateLimiter(times=1000, seconds=20)),
-])
+@app.get("/predictions",
+         dependencies=[
+             Depends(RateLimiter(times=1000, seconds=20)),
+         ],
+         response_model=list[schemas.PredictionListModel]
+         )
 def list_predictions_view(status: Optional[str] = None, ):
     results = helpers.list_prediction_results(status=status)
-    return results
+    return [schemas.PredictionListModel.from_replicate(x.dict()) for x in results]
 
 
 @app.get("/predictions/{prediction_id}",
          dependencies=[
              Depends(RateLimiter(times=1000, seconds=20)),
          ],
+         response_model=schemas.PredictionDetailModel
          )
 def prediction_detail_view(prediction_id: str):
     result, status = helpers.get_prediction_details(prediction_id=prediction_id)
@@ -85,26 +93,29 @@ def prediction_detail_view(prediction_id: str):
         raise HTTPException(status_code=status, detail="Prediction not found")
     elif status == 500:
         raise HTTPException(status_code=status, detail="Internal server error")
-    return result
+    return schemas.PredictionDetailModel.from_replicate(result.dict())
 
 
-@app.get("/predictions/{prediction_id}/files/{index_id}", dependencies=[
-    Depends(RateLimiter(times=1000, seconds=20)),
-])
-async def prediction_file_output_view(prediction_id: str, index_id: int):
+@app.get("/predictions/{prediction_id}/files/{index_id}.{ext}",
+         dependencies=[
+             Depends(RateLimiter(times=1000, seconds=20)),
+         ],
+         response_model=schemas.PredictionDetailModel
+         )
+async def prediction_file_output_view(prediction_id: str, index_id: int, ext: str):
     result, status = helpers.get_prediction_details(prediction_id=prediction_id)
     if status == 404:
         raise HTTPException(status_code=status, detail="Prediction not found")
     elif status == 500:
         raise HTTPException(status_code=status, detail="Internal server error")
-    outputs = result.ouput
+    outputs = result.output
     if outputs is None:
         raise HTTPException(status_code=404, detail="Prediction output not found")
     len_outputs = len(outputs)
     if index_id > len_outputs:
         raise HTTPException(status_code=404, detail="File at index output not found")
     try:
-        file_url = result.ouput[index_id]
+        file_url = result.output[index_id]
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"server error {e}")
     media_type, _ = mimetypes.guess_type(file_url)
